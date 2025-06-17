@@ -1,0 +1,33 @@
+{
+  "name": "grammy-bot",
+  "version": "1.0.0",
+  "main": "bot.js",
+  "scripts": {
+    "lint": "npx eslint src --ext .ts --fix",
+    "start": "npx tsc && node dist/bot.js",
+    "dev": "nodemon"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@eslint/css": "^0.9.0",
+    "@eslint/js": "^9.29.0",
+    "@eslint/json": "^0.12.0",
+    "@eslint/markdown": "^6.5.0",
+    "@types/node": "^24.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.34.0",
+    "@typescript-eslint/parser": "^8.34.0",
+    "eslint": "^9.29.0",
+    "globals": "^16.2.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.34.0"
+  },
+  "dependencies": {
+    "@grammyjs/conversations": "^2.1.0",
+    "dotenv": "^16.5.0",
+    "grammy": "^1.36.3",
+    "nodemon": "^3.1.10"
+  }
+}
