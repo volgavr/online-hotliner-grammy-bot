@@ -263,13 +263,13 @@ async function registerIssueDialog(dlg: Conversation<MyContext, MyContext>, ctx:
         contact.filled = true;
     }
 
-    await ctx.reply(`📝 Записал. Отправляю вашу заявку.\n\n` +
-        `👤 Type: ${issue.equipmentTypeId}\n` +
-        `⭐ Brand: ${issue.equipmentBrandId}\n` +
-        `📝 Serial: ${issue.serialNumber || ""}\n` +
-        `👤 Name: ${contact.name}\n` +
-        `⭐ Phone: ${contact.phone_number}\n`+
-        `👤 Email: ${contact.email}\n`,
+    await ctx.reply(`📝 Записал. Отправляю вашу заявку.`,
+        // `👤 Type: ${issue.equipmentTypeId}\n` +
+        // `⭐ Brand: ${issue.equipmentBrandId}\n` +
+        // `📝 Serial: ${issue.serialNumber || ""}\n` +
+        // `👤 Name: ${contact.name}\n` +
+        // `⭐ Phone: ${contact.phone_number}\n`+
+        // `👤 Email: ${contact.email}\n`,
         {
             reply_markup: { remove_keyboard: true }
         }
