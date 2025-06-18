@@ -1,6 +1,6 @@
 {
   "name": "online-hotliner-bot",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "bot.js",
   "scripts": {
     "lint": "npx eslint src --ext .ts --fix",

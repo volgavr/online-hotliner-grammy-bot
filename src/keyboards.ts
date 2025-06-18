@@ -1,5 +1,5 @@
 import { InlineKeyboard, Keyboard } from "grammy";
-import { CANNOT_GET_SMS_CODE_TEXT, SHARE_MY_FIRST_NAME_TEXT } from "./consts";
+import { CANNOT_GET_SMS_CODE_TEXT, NO_MORE_PHOTO_TEXT, SHARE_MY_FIRST_NAME_TEXT } from "./consts";
 
 // Build an inline keyboard:
 export const equipmentTypeKeyboard = new InlineKeyboard()
@@ -19,7 +19,7 @@ export const equipmentBrandKeyboard = new InlineKeyboard()
     .text('ПОТОК', 'brand_5');
 
 export const continueBtnKeyboard = new Keyboard()
-    .text('Продолжить').resized();
+    .text(NO_MORE_PHOTO_TEXT).resized();
 
 export const shareMyPhoneNumberKeyboard = new Keyboard()
     .requestContact('Предоставить номер').resized().oneTime();

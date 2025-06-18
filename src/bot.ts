@@ -5,15 +5,16 @@ import {
     ConversationFlavor,
     Conversation,
 } from "@grammyjs/conversations";
-
-import { config } from "dotenv";
+import helper from "./helper";
 import { continueBtnKeyboard, equipmentBrandKeyboard, equipmentTypeKeyboard, haventGotConfirmationCodeKeyboard, shareMyFirstNameKeyboard, shareMyPhoneNumberKeyboard } from "./keyboards";
 import { validate } from "./validation";
 import { CANNOT_GET_SMS_CODE_TEXT,
      CONFIRMATION_ATTEMPT_LIMIT,
-    NEW_ISSUE_CONTINUE_TEXT,
+    NO_MORE_PHOTO_TEXT,
     NEW_ISSUE_DIALOG_NAME,
-    SHARE_MY_FIRST_NAME_TEXT } from "./consts";
+    SHARE_MY_FIRST_NAME_TEXT,
+    } from "./consts";
+import { config } from "dotenv";
 config(); // Loads from .env
 
 interface IssueData {
@@ -150,7 +151,7 @@ async function registerIssueDialog(dlg: Conversation<MyContext, MyContext>, ctx:
         else if (message.video) {
             // Handle video message
         }
-        else if (message.text?.toLowerCase() === NEW_ISSUE_CONTINUE_TEXT) {
+        else if (helper.areEqual(NO_MORE_PHOTO_TEXT, message.text)) {
             issue.filled = true;
         }
         else {
@@ -211,8 +212,8 @@ async function registerIssueDialog(dlg: Conversation<MyContext, MyContext>, ctx:
                 }
             }
         }
-        else if (msg.text == CANNOT_GET_SMS_CODE_TEXT) {
-            ctx.reply("📝 Убедитесь, что вы используете номер российского оператора. Попробуйте повторить позднее");
+        else if (helper.areEqual(CANNOT_GET_SMS_CODE_TEXT, msg.text)) {
+            ctx.reply("⚠️ Убедитесь, что вы используете номер российского оператора. Попробуйте повторить позднее");
         }
         else {
             ctx.reply(`❌ ${message} Будьте внимательны.`);
@@ -254,7 +255,7 @@ async function registerIssueDialog(dlg: Conversation<MyContext, MyContext>, ctx:
             { otherwise: (ct) => ct.reply("❌ Мне нужен текстовый ответ. Попробуйте еще раз.") }
         );
 
-        if (msg.text == SHARE_MY_FIRST_NAME_TEXT) {
+        if (helper.areEqual(SHARE_MY_FIRST_NAME_TEXT, msg.text)) {
             contact.filled = true;
             break;
         }
