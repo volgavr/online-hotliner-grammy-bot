@@ -1,6 +1,6 @@
 {
   "name": "online-hotliner-bot",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "bot.js",
   "scripts": {
     "lint": "npx eslint src --ext .ts --fix",
@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@grammyjs/conversations": "^2.1.0",
+    "axios": "^1.10.0",
     "dotenv": "^16.5.0",
     "grammy": "^1.36.3",
     "nodemon": "^3.1.10"

@@ -8,45 +8,31 @@ import {
 import helper from "./helper";
 import { continueBtnKeyboard, equipmentBrandKeyboard, equipmentTypeKeyboard, haventGotConfirmationCodeKeyboard, shareMyFirstNameKeyboard, shareMyPhoneNumberKeyboard } from "./keyboards";
 import { validate } from "./validation";
-import { CANNOT_GET_SMS_CODE_TEXT,
-     CONFIRMATION_ATTEMPT_LIMIT,
+import {
+    CANNOT_GET_SMS_CODE_TEXT,
+    CONFIRMATION_ATTEMPT_LIMIT,
     NO_MORE_PHOTO_TEXT,
     NEW_ISSUE_DIALOG_NAME,
     SHARE_MY_FIRST_NAME_TEXT,
-    } from "./consts";
+    TITLE_MIN_LENGTH,
+    TITLE_MAX_LENGTH,
+    DESCRIPTION_MAX_LENGTH,
+    HELP_TEXT,
+} from "./consts";
 import { config } from "dotenv";
+import { tryCreateIssue, tryGetBrand, trySendVerificationCode, tryVerifyPhoneNumber } from "./request-api";
+import { IssueData, UserContact } from "./contracts";
 config(); // Loads from .env
 
-interface IssueData {
-    equipmentTypeId: number;
-    equipmentBrandId: number;
-    serialNumber: string;
-    description: string;
-    photos: number[];
-    video?: number;
-    filled: boolean;
-}
-
-interface UserContact {
-    name: string;
-    phone_number: string;
-    email: string;
-    filled: boolean;
-}
-
 // Define the shape of your session
-interface SessionData {
-    equipmentTypeId: number;
-}
+type SessionData = object;
 
 // Extend the context to include session data
 type MyContext = Context & SessionFlavor<SessionData> & ConversationFlavor<Context>;
 
 // Session initializer (default values)
-function initialSession(): SessionData {
-    return {
-        equipmentTypeId: 0
-    };
+function initialSession() {
+    return {};
 }
 
 const bot = new Bot<MyContext>(process.env.API_BOT_TOKEN || "");
@@ -60,7 +46,10 @@ bot.use(conversations({
         // Entered conversation `id`.
     },
     onExit(id, ctx) {
-        ctx.reply("Диалог завершен. Начать заново можно с команды /start");
+        ctx.reply("Диалог завершен. Начать заново можно с команды /start",
+        {
+            reply_markup: { remove_keyboard: true }
+        });
     },
 }));
 
@@ -70,15 +59,20 @@ async function registerIssueDialog(dlg: Conversation<MyContext, MyContext>, ctx:
         equipmentBrandId: 0,
         equipmentTypeId: 0,
         serialNumber: "",
+        title: "",
         description: "",
         photos: [],
         filled: false
     };
 
+    //High priority for [help] command
+    // no await!
+    dlg.waitForCommand('help').then(async (ctx) => { await ctx.reply(HELP_TEXT); });
+
     //Возможность прервать диалог командой /reset
     // no await!
     dlg.waitForCommand("reset").then(() => dlg.halt());
-
+ 
     // Step 1: Запросим тип оборудования
     await ctx.reply("Пожалуйста, выберите тип оборудования:", {
         reply_markup: equipmentTypeKeyboard
@@ -98,14 +92,28 @@ async function registerIssueDialog(dlg: Conversation<MyContext, MyContext>, ctx:
         reply_markup: equipmentBrandKeyboard
     });
 
-    ctx1 = await dlg.waitForCallbackQuery(/brand_(\d+)/,
+    ctx1 = await dlg.waitForCallbackQuery(/brand_([a-z-]+)/,
         { otherwise: (ct) => ct.reply("❌ Пожалуйста, выберите вариант из предложенных.") }
     );
     ctx1.answerCallbackQuery();
-    issue.equipmentBrandId = Number(ctx1.match[1]);
+    const brandName = ctx1.match[1];
+
+    //external API call
+    //оборачиваем в external(), чтобы запросы в диалоге не дублировались
+    const brandInfo = await dlg.external(
+        () => {
+            return tryGetBrand(brandName);
+        }
+    );
+    if (brandInfo.success) {
+        issue.equipmentBrandId = brandInfo.data.id || 0;
+    }
+    else {
+        ctx.reply("⚠️ Ошибка при выполнении. Приносим извинения").then(() => dlg.halt());;
+    }
 
     // Step 3: Запросим серийный номер
-    
+
     await ctx.reply("✅ Укажите серийный номер оборудования (если номера нет, поставьте дефис: «-»)");
     while (!issue.serialNumber) {
         const { msg } = await dlg.waitFor(":text",
@@ -121,8 +129,24 @@ async function registerIssueDialog(dlg: Conversation<MyContext, MyContext>, ctx:
         }
     }
 
-    // Step 4: Запросим описание проблемы
-    await ctx.reply("✅ Опишите ваш вопрос (проблему), я принимаю до 500 знаков:");
+    // Step 4. Запросим краткое описание
+    await ctx.reply(`✅ Кратко опишите ваш вопрос (от ${TITLE_MIN_LENGTH} до ${TITLE_MAX_LENGTH} знаков):`);
+    while (!issue.title) {
+        const { msg } = await dlg.waitFor(":text",
+            { otherwise: (ct) => ct.reply("❌ Пожалуйста, введите текстовое сообщение.") }
+        );
+
+        const { passed, message, output } = validate('title', msg.text?.trim());
+
+        if (passed)
+            issue.title = output;
+        else {
+            ctx.reply("❌ " + message);
+        }
+    }
+
+    // Step 4a. Запросим описание проблемы
+    await ctx.reply(`✅ Опишите ваш вопрос (проблему), я принимаю до ${DESCRIPTION_MAX_LENGTH} знаков:`);
     while (!issue.description) {
         const { msg } = await dlg.waitFor(":text",
             { otherwise: (ct) => ct.reply("❌ Пожалуйста, введите текстовое сообщение.") }
@@ -162,7 +186,7 @@ async function registerIssueDialog(dlg: Conversation<MyContext, MyContext>, ctx:
     const contact: UserContact = { name: '', phone_number: '', email: '', filled: false };
 
     //Step 6. Запросим контакт
-    await ctx.reply("✅ Отлично. Чтобы специалист мог связаться с вами, необходимо оставить номер телефона.",
+    await ctx.reply("✅ Отлично. Чтобы зарегистрировать заявку, необходимо оставить номер телефона.",
         {
             reply_markup: shareMyPhoneNumberKeyboard,
         }
@@ -184,6 +208,23 @@ async function registerIssueDialog(dlg: Conversation<MyContext, MyContext>, ctx:
         }
     }
 
+    //external API call
+    //оборачиваем в external(), чтобы запросы в диалоге не дублировались
+    const phoneConfirmationRequest = await dlg.external(
+        () => {
+            return trySendVerificationCode(contact.phone_number);
+        }
+    );
+
+    if (!phoneConfirmationRequest.success) {
+        ctx.reply("⚠️ Не удалось отправить код подтверждения на номер. Создание заявки будет прервано. Приносим извинения.",
+            {
+                reply_markup: { remove_keyboard: true }
+            }
+        );
+        return;
+    }
+
     //Step 7. Запросим код подтверждения
     let { confirmed, attemptCount } = { confirmed: false, attemptCount: 0 };
     await ctx.reply("✅ Принято. Отправил вам СМС с кодом подтверждения, сообщите его мне.",
@@ -196,9 +237,14 @@ async function registerIssueDialog(dlg: Conversation<MyContext, MyContext>, ctx:
             { otherwise: (ct) => ct.reply("❌ Мне нужен текстовый ответ. Попробуйте еще раз") }
         );
 
-        const { passed, message } = validate('one-time-code', msg.text);
+        const { passed, message, output } = validate('one-time-code', msg.text);
         if (passed) {
-            if (msg.text == '1111') {
+            // Use conversation.external to safely call external API
+            const { success } = await dlg.external({
+                task: () => tryVerifyPhoneNumber(contact.phone_number, output)
+            });
+            //console.log(success, data, error)
+            if (success) {
                 confirmed = true;
                 await ctx.reply("✅ Благодарю!");
             }
@@ -207,6 +253,22 @@ async function registerIssueDialog(dlg: Conversation<MyContext, MyContext>, ctx:
                 if (attemptCount < CONFIRMATION_ATTEMPT_LIMIT)
                     ctx.reply('❌ Это неверный код, повторите попытку.');
                 else {
+                    const { success, error } = await dlg.external(
+                        () => {
+                            return trySendVerificationCode(contact.phone_number);
+                        }
+                    );
+
+                    if (!success) {
+                        ctx.reply("⚠️ Не удалось отправить код подтверждения на номер. Создание заявки будет прервано. Приносим извинения.",
+                            {
+                                reply_markup: { remove_keyboard: true }
+                            }
+                        );
+                        dlg.log(error);
+                        return;
+                    }
+
                     ctx.reply(`❌ Вы ${CONFIRMATION_ATTEMPT_LIMIT} раза ввели неверный код. Отправил вам новый, повторите попытку.`);
                     attemptCount = 0;
                 }
@@ -259,7 +321,7 @@ async function registerIssueDialog(dlg: Conversation<MyContext, MyContext>, ctx:
             contact.filled = true;
             break;
         }
-        
+
         contact.name = msg.text?.trim();
         contact.filled = true;
     }
@@ -276,13 +338,24 @@ async function registerIssueDialog(dlg: Conversation<MyContext, MyContext>, ctx:
         }
     );
 
-    // (TODO) Save to database or send to admin here
-    const issueNumber = '20230617\\-000';
-    
+    //Now we're up to create a new issue!
+    //console.log({ ...issue, contact });
+    const { success, data, error } = await dlg.external({
+        task: () => tryCreateIssue(issue, contact, { type: 'Basic', token: process.env.ENDPOINT_AUTH_TOKEN })
+    });
+    //console.log(success, data);
+
+    if (!success) {
+        ctx.reply("⚠️ В процессе создания заявки возникла ошибка. Приносим извинения. Обещаем все починить.");
+        console.error(error);
+        return;
+    }
+
+    // (TODO) send to admin here
     ctx.reply(
-        `✅ Успешно\\! Ваша заявка [${issueNumber}](https://onlinehotline.ru) зарегистрирована на площадке **onlinehotline\\.ru**`,
+        `✅ Успешно! Ваша заявка <a href="${data?.url}">${data?.number}</a> зарегистрирована на площадке onlinehotline.ru`,
         {
-            parse_mode: "MarkdownV2",
+            parse_mode: "HTML",//с MarkdownV2 больше проблем
             link_preview_options: { is_disabled: true }
         }
     ).then(() => dlg.halt());
@@ -296,9 +369,8 @@ bot.command("start", async (ctx) => {
     await ctx.conversation.enter(NEW_ISSUE_DIALOG_NAME);
 });
 
-// --- Command to trigger the form ---
 bot.command("help", async (ctx) => {
-
+    await ctx.reply(HELP_TEXT);
 });
 
 bot.command("reset", async (ctx) => {
@@ -306,6 +378,13 @@ bot.command("reset", async (ctx) => {
     await ctx.conversation.exit(NEW_ISSUE_DIALOG_NAME);
     //reset session
     ctx.session = initialSession();
+});
+
+// Error handler
+bot.catch((err) => {
+    const ctx = err.ctx;
+    console.error(`Error while handling update ${ctx.update.update_id}:`);
+    console.error(err.error); // actual error object
 });
 
 // Start the bot

@@ -1,6 +1,6 @@
-import { DESCRIPTION_MIN_LENGTH, SERIAL_NUMBER_MAX_LENGTH } from "./consts";
+import { DESCRIPTION_MAX_LENGTH, DESCRIPTION_MIN_LENGTH, SERIAL_NUMBER_MAX_LENGTH, TITLE_MAX_LENGTH, TITLE_MIN_LENGTH } from "./consts";
 
-type ValidationDataType = 'email' | 'serial' | 'description' | 'phone-number' | 'one-time-code';
+type ValidationDataType = 'email' | 'serial' | 'title' | 'description' | 'phone-number' | 'one-time-code';
 
 interface IValidationResult<T> {
     passed: boolean;
@@ -13,7 +13,9 @@ export function validate(dataType: ValidationDataType, input: string) {
         case 'email':
             return validateEmail(input);
         case 'serial':
-            return validateSerial(input); 
+            return validateSerial(input);
+        case 'title':
+            return validateTitle(input);
         case 'description':
             return validateDescription(input);
         case 'phone-number':
@@ -32,6 +34,15 @@ function validateEmail(input: string): IValidationResult<string> {
     }
 }
 
+function validateTitle(input: string): IValidationResult<string> {
+    const isValid = !!input && input.length >= TITLE_MIN_LENGTH;
+    return {
+        passed: isValid,
+        message: !isValid ? `Слишком короткое описание. Требуется минимум ${TITLE_MIN_LENGTH} знаков.` : "",
+        output: isValid ? input.substring(0, TITLE_MAX_LENGTH) : input
+    }
+}
+
 function validateSerial(input: string): IValidationResult<string> {
     const isValid = input == '-' || input.length <= SERIAL_NUMBER_MAX_LENGTH && /^([A-z0-9-]+\s?)+$/.test(input);
     return {
@@ -40,12 +51,13 @@ function validateSerial(input: string): IValidationResult<string> {
         output: isValid ? input.trim() : input
     }
 }
+
 function validateDescription(input: string): IValidationResult<string> {
     const isValid = !!input && input.length >= DESCRIPTION_MIN_LENGTH;
     return {
         passed: isValid,
         message: !isValid ? `Слишком короткое описание. Требуется минимум ${DESCRIPTION_MIN_LENGTH} знаков.` : "",
-        output: isValid ? input.substring(0, 500) : input
+        output: isValid ? input.substring(0, DESCRIPTION_MAX_LENGTH) : input
     }
 }
 

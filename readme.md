@@ -34,3 +34,16 @@ const hears = await conversation.waitForHears(/regex/);
 const start = await conversation.waitForCommand("start");
 // etc
 ```
+
+## References
+Мой опыт создания телеграм-бота на NodeJS/grammY
+https://frontend-spectre.ru/details/43604
+
+Телеграм-бот на Node.js/grammY: Диалоги
+https://habr.com/ru/articles/852330/
+
+## Где разместить Telegram-бота: обзор облачных хостингов и VPS
+https://dtf.ru/ai_review/3852874-obzor-khostingov-dlya-telegram-botov
+
+## Как разместить Telegram-бота на виртуальном сервере
+https://habr.com/ru/companies/ruvds/articles/786014/
