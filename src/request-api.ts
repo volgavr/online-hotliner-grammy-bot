@@ -8,11 +8,11 @@ interface HttpRequestResult<T> {
     success: boolean,
     data: T,
     status?: string,
-    error?: string, 
+    error?: string,
     requestError?: string
 }
 
-export async function tryGetBrand(brand_name: string): Promise<HttpRequestResult<{id?:number, title?: string}>> {
+export async function tryGetBrand(brand_name: string): Promise<HttpRequestResult<{ id?: number, title?: string }>> {
     try {
         const response = await axios.get(`${ENDPOINT_BASE_URL}/IssueApi/GetBrand/${brand_name}`);
         return {
@@ -63,10 +63,16 @@ export async function tryVerifyPhoneNumber(phone_number: string, code: string): 
     }
 }
 
-export async function tryCreateIssue(issue: IssueData, user: UserContact, auth: AuthorizationData ): Promise<HttpRequestResult<IssueCreatedData | null>> {
+export async function tryCreateIssue(issue: IssueData, user: UserContact, auth: AuthorizationData): Promise<HttpRequestResult<IssueCreatedData | null>> {
     try {
         const response = await axios.post(`${ENDPOINT_BASE_URL}/IssueApi/CreateIssue`,
-            {...issue, user: user },
+            {
+                ...issue, user: {
+                    email: user.email,
+                    phone: '+'+user.phone_number,
+                    name: user.name
+                }
+            },
             {
                 headers: {
                     Authorization: `${auth.type} ${auth.token}`,

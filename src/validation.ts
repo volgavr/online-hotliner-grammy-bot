@@ -1,4 +1,5 @@
-import { DESCRIPTION_MAX_LENGTH, DESCRIPTION_MIN_LENGTH, SERIAL_NUMBER_MAX_LENGTH, TITLE_MAX_LENGTH, TITLE_MIN_LENGTH } from "./consts";
+import { PhotoSize, Video } from "grammy/types";
+import { DESCRIPTION_MAX_LENGTH, DESCRIPTION_MIN_LENGTH, IMAGE_MIN_HEIGHT, IMAGE_MIN_WIDTH, SERIAL_NUMBER_MAX_LENGTH, TITLE_MAX_LENGTH, TITLE_MIN_LENGTH, VIDEO_MAX_DURATION, VIDEO_MAX_FILESIZE } from "./consts";
 
 type ValidationDataType = 'email' | 'serial' | 'title' | 'description' | 'phone-number' | 'one-time-code';
 
@@ -79,3 +80,32 @@ function validatePhoneNumber(input: string): IValidationResult<string> {
     }
 }
 
+export function validatePhotoSize(photo: PhotoSize): IValidationResult<PhotoSize> {
+    const isValid = photo.width >= IMAGE_MIN_WIDTH && photo.height >= IMAGE_MIN_HEIGHT;
+    return {
+        passed: isValid,
+        message: !isValid ? `Минимальный размер изображения должен быть ${IMAGE_MIN_WIDTH} x ${IMAGE_MIN_HEIGHT}` : "",
+        output: photo
+    }
+}
+
+export function validateVideo(video: Video): IValidationResult<Video> {
+    const result = {
+        passed: false,
+        message: "",
+        output: video
+    };
+
+    if(video.duration > VIDEO_MAX_DURATION) {
+        result.message = `Я принимаю видео длительностью до ${(VIDEO_MAX_DURATION/60).toFixed(2)} мин.`;
+        return result;    
+    }
+
+    if (video.file_size && video.file_size > VIDEO_MAX_FILESIZE) {
+        result.message = `Размер видео слишком велик. Я принимаю до ${(VIDEO_MAX_FILESIZE / (1 << 20)).toFixed(0)} Мбайт.`;
+        return result;
+    }
+
+    result.passed = true;
+    return result;
+}

@@ -1,11 +1,29 @@
+export type MediaFileInfo = {
+    filePath?: string;
+    mimeType?: string;
+    telegramFileId: string;
+    fileUniqueId: string;
+}
+
+export type VideoFileInfo = MediaFileInfo & {
+    thumbnail?: MediaFileInfo;
+}
+
+export type UploadWarnings = { photo_upload?: string, video_upload?: string };
+
+export interface MediaHandleResult {
+    success: boolean;
+    warning?: string;
+}
+
 export interface IssueData {
     equipmentTypeId: number;
     equipmentBrandId: number;
     serialNumber: string;
     title: string;
     description: string;
-    photos: number[];
-    video?: number;
+    images: MediaFileInfo[];
+    video?: VideoFileInfo;
     filled: boolean;
 }
 
